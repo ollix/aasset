@@ -28,6 +28,7 @@
 
 #include <android/asset_manager.h>
 
+// Caches the states of a asset file.
 struct AAssetFile {
   AAsset* asset;
   FILE* stream;
@@ -41,6 +42,8 @@ AAssetManager* android_asset_manager = NULL;
 
 // The weak reference pointing to the first managed `AAssetFile` object.
 AAssetFile* managed_aasset_files = NULL;
+
+// Private Functions.
 
 // Allocates a new `AAssetFile` object and prepends it to the list of
 // `managed_aasset_files`.
@@ -92,6 +95,8 @@ AAssetFile* aasset_get_file(FILE* stream) {
   }
   return aasset_file;
 }
+
+// Standard Functions.
 
 int aasset_init(AAssetManager* manager) {
   if (manager == NULL) {
@@ -156,9 +161,31 @@ int aasset_fclose(FILE* stream) {
   return 0;
 }
 
-// A dummy function that should never be called.
 static int android_close(void* cookie) {
-  AAsset_close((AAsset*)cookie);
+  AAsset* asset = (AAsset*)cookie;
+  if (managed_aasset_files != NULL) {
+    AAssetFile* prev = NULL;
+    AAssetFile* iterator = managed_aasset_files;
+    AAssetFile* aasset_file = NULL;
+    while (iterator) {
+      if (iterator->asset == asset) {
+        aasset_file = iterator;
+        break;
+      }
+      prev = iterator;
+      iterator = iterator->next;
+    }
+
+    if (aasset_file == NULL)
+      return 1;
+
+    if (prev == NULL) {
+      managed_aasset_files = aasset_file->next;
+    } else {
+      prev->next = aasset_file->next;
+    }
+  }
+  AAsset_close(asset);
   return 0;
 }
 
@@ -196,4 +223,18 @@ FILE* aasset_fopen(const char* fname, const char* mode) {
   aasset_file->asset = asset;
   aasset_file->pos = 0;
   return stream;
+}
+
+// Extension Functions.
+
+int aasset_fsize(FILE* stream) {
+  AAssetFile* aasset_file = aasset_get_file(stream);
+  if (aasset_file == NULL) {
+    return 1;
+  }
+
+  const int kPosition = aasset_file->pos;
+  const int kFileSize = AAsset_seek(aasset_file->asset, 0, SEEK_END);
+  AAsset_seek(aasset_file->asset, kPosition, SEEK_SET);
+  return kFileSize;
 }

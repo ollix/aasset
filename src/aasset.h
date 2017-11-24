@@ -35,19 +35,25 @@ extern "C" {
 // Initializes aasset manager. Returns 0 if successful.
 int aasset_init(AAssetManager* manager);
 
-// Handles files through `AAssetManager` from Android.
+// Mimics standard C functions for manipulating files located in Android's
+// assets folder.
 FILE* aasset_fopen(const char* fname, const char* mode);
 int aasset_fread(void* ptr, size_t size, size_t count, FILE* stream);
 int aasset_fseek(FILE* stream, long int offset, int origin);
 int aasset_ftell(FILE* stream);
-int aasset_fclose(FILE* stream );
+int aasset_fclose(FILE* stream);
+
+// Extensions.
+int aasset_fsize(FILE* stream);
 
 // Hijacks standard C functions.
+#ifdef AASSET_HIJACK_STANDARD_FUNCTIONS
 #define fopen(name, mode) aasset_fopen(name, mode)
 #define fread(ptr, size, count, stream) aasset_fread(ptr, size, count, stream)
 #define fseek(stream, offset, origin) aasset_fseek(stream, offset, origin)
 #define ftell(stream) aasset_ftell(stream)
 #define fclose(stream) aasset_fclose(stream)
+#endif  // AASSET_HIJACK_STANDARD_FUNCTIONS
 
 #ifdef __cplusplus
 }  // extern "C"
