@@ -23,17 +23,8 @@
 
 cmake_minimum_required(VERSION 3.4.1)
 
-find_library( android-lib android )
-
-add_library( aasset-lib
-             SHARED
-             src/aasset.c )
-
-target_compile_options( aasset-lib
-                        PUBLIC -include "aasset.h" )
-
-target_include_directories( aasset-lib
-                            PUBLIC src )
-
-target_link_libraries( aasset-lib
-                       PRIVATE ${android-lib} )
+find_library(android-lib android)
+add_library(aasset-lib SHARED "src/aasset.c")
+target_compile_options(aasset-lib PUBLIC -include "aasset.h")
+target_include_directories(aasset-lib PUBLIC "src")
+target_link_libraries(aasset-lib PRIVATE ${android-lib})
