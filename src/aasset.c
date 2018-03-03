@@ -24,9 +24,12 @@
 #include "aasset.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 
 #include <android/asset_manager.h>
+
+#define _BSD_SOURCE
 
 // Caches the states of a asset file.
 struct AAssetFile {
@@ -48,7 +51,7 @@ AAssetFile* managed_aasset_files = NULL;
 // Allocates a new `AAssetFile` object and prepends it to the list of
 // `managed_aasset_files`.
 AAssetFile* aasset_alloc_file() {
-  AAssetFile* aasset_file = malloc(sizeof(AAssetFile));
+  AAssetFile* aasset_file = (AAssetFile*)malloc(sizeof(AAssetFile));
   if (aasset_file == NULL)
     return NULL;
 
@@ -212,8 +215,8 @@ FILE* aasset_fopen(const char* fname, const char* mode) {
     return NULL;
   }
 
-  FILE* stream = funopen(asset, android_read, android_write, android_seek,
-                         android_close);
+  FILE* stream = (FILE*)funopen(asset, android_read, android_write,
+                                android_seek, android_close);
   if (stream == NULL) {
     AAsset_close(asset);
     return NULL;
