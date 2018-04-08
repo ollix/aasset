@@ -34,6 +34,8 @@ extern "C" {
 
 // Initializes aasset manager. Returns 0 if successful.
 int aasset_init(AAssetManager* manager);
+// Returns the pointer to the AAssetManager object.
+AAssetManager* aasset_manager();
 
 // Mimics standard C functions for manipulating files located in Android's
 // assets folder.

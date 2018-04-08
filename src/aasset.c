@@ -109,6 +109,10 @@ int aasset_init(AAssetManager* manager) {
   return 0;
 }
 
+AAssetManager* aasset_manager() {
+  return android_asset_manager;
+}
+
 int aasset_fread(void* ptr, size_t size, size_t count, FILE* stream) {
   AAssetFile* aasset_file = aasset_get_file(stream);
   if (aasset_file == NULL) {
