@@ -214,6 +214,10 @@ FILE* aasset_fopen(const char* fname, const char* mode) {
   // An Android asset path should never begin with `/`.
   if (fname[0] == '/') fname = &fname[1];
 
+  // Strips the Android assets prefix.
+  if (strlen(fname) > 23 && strncmp("file:///android_assets/", fname, 23) == 0)
+    fname = &fname[23];
+
   AAsset* asset = AAssetManager_open(android_asset_manager, fname, 0);
   if (asset == NULL) {
     return NULL;
