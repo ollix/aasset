@@ -238,6 +238,40 @@ FILE* aasset_fopen(const char* fname, const char* mode) {
 
 // Extension Functions.
 
+int aasset_copy_file(const char* source_path, const char* target_path) {
+  FILE* source_file = aasset_fopen(source_path, "rb");
+  if (source_file == NULL) {
+    return 1;
+  }
+
+  aasset_fseek(source_file, 0, SEEK_END);
+  const int kFileSize = aasset_ftell(source_file);
+  aasset_fseek(source_file, 0, SEEK_SET);
+
+  char buffer[kFileSize];
+  if (aasset_fread(buffer, 1, kFileSize, source_file) != kFileSize) {
+    return 1;
+  }
+
+  if (aasset_fclose(source_file) == EOF) {
+    return 1;
+  }
+
+  FILE* target_file = fopen(target_path, "wb");
+  if (target_file == NULL) {
+    return 1;
+  }
+  int result = 0;
+  if (fwrite(buffer, 1, kFileSize, target_file) != kFileSize &&
+      fflush(target_file) == EOF) {
+    result = 1;
+  }
+  if (fclose(target_file) == EOF) {
+    return 1;
+  }
+  return result;
+}
+
 int aasset_fsize(FILE* stream) {
   AAssetFile* aasset_file = aasset_get_file(stream);
   if (aasset_file == NULL) {

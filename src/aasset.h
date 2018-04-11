@@ -45,7 +45,8 @@ int aasset_fseek(FILE* stream, long int offset, int origin);
 int aasset_ftell(FILE* stream);
 int aasset_fclose(FILE* stream);
 
-// Extensions.
+// Helper functions.
+int aasset_copy_file(const char* source, const char* target);
 int aasset_fsize(FILE* stream);
 
 // Hijacks standard C functions.
