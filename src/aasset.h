@@ -47,6 +47,7 @@ int aasset_fclose(FILE* stream);
 
 // Helper functions.
 int aasset_copy_file(const char* source, const char* target);
+int aasset_file_exists(const char* source);
 int aasset_fsize(FILE* stream);
 
 // Hijacks standard C functions.

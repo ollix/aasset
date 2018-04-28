@@ -272,6 +272,15 @@ int aasset_copy_file(const char* source_path, const char* target_path) {
   return result;
 }
 
+int aasset_file_exists(const char* source_path) {
+  FILE* file = aasset_fopen(source_path, "r");
+  if (file == NULL) {
+    return 1;
+  }
+  aasset_fclose(file);
+  return 0;
+}
+
 int aasset_fsize(FILE* stream) {
   AAssetFile* aasset_file = aasset_get_file(stream);
   if (aasset_file == NULL) {
