@@ -23,9 +23,10 @@
 
 #include "aasset.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
+#include <string.h>
 
 #include <android/asset_manager.h>
 
@@ -33,25 +34,25 @@
 
 // Caches the states of a asset file.
 struct AAssetFile {
-  AAsset* asset;
-  FILE* stream;
+  AAsset *asset;
+  FILE *stream;
   off_t pos;
-  struct AAssetFile* next;
+  struct AAssetFile *next;
 };
 typedef struct AAssetFile AAssetFile;
 
 // The weak reference to the `AAssetManager` object from Android.
-AAssetManager* android_asset_manager = NULL;
+AAssetManager *android_asset_manager = NULL;
 
 // The weak reference pointing to the first managed `AAssetFile` object.
-AAssetFile* managed_aasset_files = NULL;
+AAssetFile *managed_aasset_files = NULL;
 
 // Private Functions.
 
 // Allocates a new `AAssetFile` object and prepends it to the list of
 // `managed_aasset_files`.
-AAssetFile* aasset_alloc_file() {
-  AAssetFile* aasset_file = (AAssetFile*)malloc(sizeof(AAssetFile));
+AAssetFile *aasset_alloc_file() {
+  AAssetFile *aasset_file = (AAssetFile *)malloc(sizeof(AAssetFile));
   if (aasset_file == NULL)
     return NULL;
 
@@ -70,13 +71,13 @@ AAssetFile* aasset_alloc_file() {
 
 // Returns the pointer to the `AAssetFile` object, which has the matched
 // `stream`. Returns `NULL` on failure.
-AAssetFile* aasset_get_file(FILE* stream) {
+AAssetFile *aasset_get_file(FILE *stream) {
   if (managed_aasset_files == NULL)
     return NULL;
 
-  AAssetFile* prev = NULL;
-  AAssetFile* iterator = managed_aasset_files;
-  AAssetFile* aasset_file = NULL;
+  AAssetFile *prev = NULL;
+  AAssetFile *iterator = managed_aasset_files;
+  AAssetFile *aasset_file = NULL;
   while (iterator) {
     if (iterator->stream == stream) {
       aasset_file = iterator;
@@ -101,7 +102,7 @@ AAssetFile* aasset_get_file(FILE* stream) {
 
 // Standard Functions.
 
-int aasset_init(AAssetManager* manager) {
+int aasset_init(AAssetManager *manager) {
   if (manager == NULL) {
     return 1;
   }
@@ -109,12 +110,12 @@ int aasset_init(AAssetManager* manager) {
   return 0;
 }
 
-AAssetManager* aasset_manager() {
+AAssetManager *aasset_manager() {
   return android_asset_manager;
 }
 
-int aasset_fread(void* ptr, size_t size, size_t count, FILE* stream) {
-  AAssetFile* aasset_file = aasset_get_file(stream);
+int aasset_fread(void *ptr, size_t size, size_t count, FILE *stream) {
+  AAssetFile *aasset_file = aasset_get_file(stream);
   if (aasset_file == NULL) {
     return 0;
   }
@@ -123,8 +124,8 @@ int aasset_fread(void* ptr, size_t size, size_t count, FILE* stream) {
   return bytes;
 }
 
-int aasset_fseek(FILE* stream, long int offset, int origin) {
-  AAssetFile* aasset_file = aasset_get_file(stream);
+int aasset_fseek(FILE *stream, long int offset, int origin) {
+  AAssetFile *aasset_file = aasset_get_file(stream);
   if (aasset_file == NULL) {
     return 1;
   }
@@ -132,21 +133,21 @@ int aasset_fseek(FILE* stream, long int offset, int origin) {
   return 0;
 }
 
-int aasset_ftell(FILE* stream) {
-  AAssetFile* aasset_file = aasset_get_file(stream);
+int aasset_ftell(FILE *stream) {
+  AAssetFile *aasset_file = aasset_get_file(stream);
   if (aasset_file == NULL) {
     return EOF;
   }
   return aasset_file->pos;
 }
 
-int aasset_fclose(FILE* stream) {
+int aasset_fclose(FILE *stream) {
   if (managed_aasset_files == NULL)
     return 1;
 
-  AAssetFile* prev = NULL;
-  AAssetFile* iterator = managed_aasset_files;
-  AAssetFile* aasset_file = NULL;
+  AAssetFile *prev = NULL;
+  AAssetFile *iterator = managed_aasset_files;
+  AAssetFile *aasset_file = NULL;
   while (iterator) {
     if (iterator->stream == stream) {
       aasset_file = iterator;
@@ -168,12 +169,12 @@ int aasset_fclose(FILE* stream) {
   return 0;
 }
 
-static int android_close(void* cookie) {
-  AAsset* asset = (AAsset*)cookie;
+static int android_close(void *cookie) {
+  AAsset *asset = (AAsset *)cookie;
   if (managed_aasset_files != NULL) {
-    AAssetFile* prev = NULL;
-    AAssetFile* iterator = managed_aasset_files;
-    AAssetFile* aasset_file = NULL;
+    AAssetFile *prev = NULL;
+    AAssetFile *iterator = managed_aasset_files;
+    AAssetFile *aasset_file = NULL;
     while (iterator) {
       if (iterator->asset == asset) {
         aasset_file = iterator;
@@ -196,19 +197,19 @@ static int android_close(void* cookie) {
   return 0;
 }
 
-static int android_read(void* cookie, char* buf, int size) {
-  return AAsset_read((AAsset*)cookie, buf, size);
+static int android_read(void *cookie, char *buf, int size) {
+  return AAsset_read((AAsset *)cookie, buf, size);
 }
 
-static fpos_t android_seek(void* cookie, fpos_t offset, int whence) {
-  return AAsset_seek((AAsset*)cookie, offset, whence);
+static fpos_t android_seek(void *cookie, fpos_t offset, int whence) {
+  return AAsset_seek((AAsset *)cookie, offset, whence);
 }
 
-static int android_write(void* cookie, const char* buf, int size) {
+static int android_write(void *cookie, const char *buf, int size) {
   return -1;
 }
 
-FILE* aasset_fopen(const char* fname, const char* mode) {
+FILE *aasset_fopen(const char *fname, const char *mode) {
   if (mode[0] == 'w') return NULL;
 
   // An Android asset path should never begin with `/`.
@@ -218,18 +219,18 @@ FILE* aasset_fopen(const char* fname, const char* mode) {
   if (strlen(fname) > 23 && strncmp("file:///android_assets/", fname, 23) == 0)
     fname = &fname[23];
 
-  AAsset* asset = AAssetManager_open(android_asset_manager, fname, 0);
+  AAsset *asset = AAssetManager_open(android_asset_manager, fname, 0);
   if (asset == NULL) {
     return NULL;
   }
 
-  FILE* stream = (FILE*)funopen(asset, android_read, android_write,
-                                android_seek, android_close);
+  FILE *stream = (FILE *)funopen(asset, android_read, android_write,
+                                 android_seek, android_close);
   if (stream == NULL) {
     AAsset_close(asset);
     return NULL;
   }
-  AAssetFile* aasset_file = aasset_alloc_file();
+  AAssetFile *aasset_file = aasset_alloc_file();
   aasset_file->stream = stream;
   aasset_file->asset = asset;
   aasset_file->pos = 0;
@@ -238,8 +239,8 @@ FILE* aasset_fopen(const char* fname, const char* mode) {
 
 // Extension Functions.
 
-int aasset_copy_file(const char* source_path, const char* target_path) {
-  FILE* source_file = aasset_fopen(source_path, "rb");
+int aasset_copy_file(const char *source_path, const char *target_path) {
+  FILE *source_file = aasset_fopen(source_path, "rb");
   if (source_file == NULL) {
     return 1;
   }
@@ -257,7 +258,7 @@ int aasset_copy_file(const char* source_path, const char* target_path) {
     return 1;
   }
 
-  FILE* target_file = fopen(target_path, "wb");
+  FILE *target_file = fopen(target_path, "wb");
   if (target_file == NULL) {
     return 1;
   }
@@ -272,8 +273,8 @@ int aasset_copy_file(const char* source_path, const char* target_path) {
   return result;
 }
 
-int aasset_file_exists(const char* source_path) {
-  FILE* file = aasset_fopen(source_path, "r");
+int aasset_file_exists(const char *source_path) {
+  FILE *file = aasset_fopen(source_path, "r");
   if (file == NULL) {
     return 1;
   }
@@ -281,8 +282,8 @@ int aasset_file_exists(const char* source_path) {
   return 0;
 }
 
-int aasset_fsize(FILE* stream) {
-  AAssetFile* aasset_file = aasset_get_file(stream);
+int aasset_fsize(FILE *stream) {
+  AAssetFile *aasset_file = aasset_get_file(stream);
   if (aasset_file == NULL) {
     return 1;
   }
