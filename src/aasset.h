@@ -32,6 +32,14 @@
 extern "C" {
 #endif
 
+// Caches the states of a asset file.
+struct AAssetFile {
+  AAsset *asset;
+  off_t pos;
+  struct AAssetFile *next;
+};
+typedef struct AAssetFile AAssetFile;
+
 // Initializes aasset manager. Returns 0 if successful.
 int aasset_init(AAssetManager *manager);
 // Returns the pointer to the AAssetManager object.
@@ -39,25 +47,16 @@ AAssetManager *aasset_manager();
 
 // Mimics standard C functions for manipulating files located in Android's
 // assets folder.
-FILE *aasset_fopen(const char *fname, const char *mode);
-int aasset_fread(void *ptr, size_t size, size_t count, FILE *stream);
-int aasset_fseek(FILE *stream, long int offset, int origin);
-int aasset_ftell(FILE *stream);
-int aasset_fclose(FILE *stream);
+AAssetFile *aasset_fopen(const char *fname, const char *mode);
+int aasset_fread(void *ptr, size_t size, size_t count, AAssetFile *file);
+int aasset_fseek(AAssetFile *file, long int offset, int origin);
+int aasset_ftell(AAssetFile *file);
+int aasset_fclose(AAssetFile *file);
 
 // Helper functions.
 int aasset_copy_file(const char *source, const char *target);
 int aasset_file_exists(const char *source);
-int aasset_fsize(FILE *stream);
-
-// Hijacks standard C functions.
-#ifdef AASSET_HIJACK_STANDARD_FUNCTIONS
-#define fopen(name, mode) aasset_fopen(name, mode)
-#define fread(ptr, size, count, stream) aasset_fread(ptr, size, count, stream)
-#define fseek(stream, offset, origin) aasset_fseek(stream, offset, origin)
-#define ftell(stream) aasset_ftell(stream)
-#define fclose(stream) aasset_fclose(stream)
-#endif  // AASSET_HIJACK_STANDARD_FUNCTIONS
+int aasset_fsize(AAssetFile *file);
 
 #ifdef __cplusplus
 }  // extern "C"

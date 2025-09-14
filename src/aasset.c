@@ -32,15 +32,6 @@
 
 #define _BSD_SOURCE
 
-// Caches the states of a asset file.
-struct AAssetFile {
-  AAsset *asset;
-  FILE *stream;
-  off_t pos;
-  struct AAssetFile *next;
-};
-typedef struct AAssetFile AAssetFile;
-
 // The weak reference to the `AAssetManager` object from Android.
 AAssetManager *android_asset_manager = NULL;
 
@@ -69,37 +60,6 @@ AAssetFile *aasset_alloc_file() {
   return aasset_file;
 }
 
-// Returns the pointer to the `AAssetFile` object, which has the matched
-// `stream`. Returns `NULL` on failure.
-AAssetFile *aasset_get_file(FILE *stream) {
-  if (managed_aasset_files == NULL)
-    return NULL;
-
-  AAssetFile *prev = NULL;
-  AAssetFile *iterator = managed_aasset_files;
-  AAssetFile *aasset_file = NULL;
-  while (iterator) {
-    if (iterator->stream == stream) {
-      aasset_file = iterator;
-      break;
-    }
-    prev = iterator;
-    iterator = iterator->next;
-  }
-
-  if (aasset_file == NULL) {
-    return NULL;
-  }
-
-  // Moves the aasset file to the beginning of the list.
-  if (prev != NULL) {
-    prev->next = aasset_file->next;
-    aasset_file->next = managed_aasset_files;
-    managed_aasset_files = aasset_file;
-  }
-  return aasset_file;
-}
-
 // Standard Functions.
 
 int aasset_init(AAssetManager *manager) {
@@ -114,58 +74,35 @@ AAssetManager *aasset_manager() {
   return android_asset_manager;
 }
 
-int aasset_fread(void *ptr, size_t size, size_t count, FILE *stream) {
-  AAssetFile *aasset_file = aasset_get_file(stream);
-  if (aasset_file == NULL) {
-    return 0;
+int aasset_fread(void *ptr, size_t size, size_t count, AAssetFile *file) {
+  if (file == NULL) {
+    return -1;
   }
-  int bytes = AAsset_read(aasset_file->asset, ptr, size * count);
-  aasset_file->pos += bytes;
+  int bytes = AAsset_read(file->asset, ptr, size * count);
+  file->pos += bytes;
   return bytes;
 }
 
-int aasset_fseek(FILE *stream, long int offset, int origin) {
-  AAssetFile *aasset_file = aasset_get_file(stream);
-  if (aasset_file == NULL) {
-    return 1;
+int aasset_fseek(AAssetFile *file, long int offset, int origin) {
+  if (file == NULL) {
+    return -1;
   }
-  aasset_file->pos = AAsset_seek(aasset_file->asset, offset, origin);
+  file->pos = AAsset_seek(file->asset, offset, origin);
   return 0;
 }
 
-int aasset_ftell(FILE *stream) {
-  AAssetFile *aasset_file = aasset_get_file(stream);
-  if (aasset_file == NULL) {
-    return EOF;
+int aasset_ftell(AAssetFile *file) {
+  if (file == NULL) {
+    return -1;
   }
-  return aasset_file->pos;
+  return file->pos;
 }
 
-int aasset_fclose(FILE *stream) {
-  if (managed_aasset_files == NULL)
+int aasset_fclose(AAssetFile *file) {
+  if (managed_aasset_files == NULL) {
     return 1;
-
-  AAssetFile *prev = NULL;
-  AAssetFile *iterator = managed_aasset_files;
-  AAssetFile *aasset_file = NULL;
-  while (iterator) {
-    if (iterator->stream == stream) {
-      aasset_file = iterator;
-      break;
-    }
-    prev = iterator;
-    iterator = iterator->next;
   }
-
-  if (aasset_file == NULL)
-    return 1;
-
-  if (prev == NULL) {
-    managed_aasset_files = aasset_file->next;
-  } else {
-    prev->next = aasset_file->next;
-  }
-  AAsset_close(aasset_file->asset);
+  AAsset_close(file->asset);
   return 0;
 }
 
@@ -209,7 +146,7 @@ static int android_write(void *cookie, const char *buf, int size) {
   return -1;
 }
 
-FILE *aasset_fopen(const char *fname, const char *mode) {
+AAssetFile *aasset_fopen(const char *fname, const char *mode) {
   if (mode[0] == 'w') return NULL;
 
   // An Android asset path should never begin with `/`.
@@ -224,23 +161,16 @@ FILE *aasset_fopen(const char *fname, const char *mode) {
     return NULL;
   }
 
-  FILE *stream = (FILE *)funopen(asset, android_read, android_write,
-                                 android_seek, android_close);
-  if (stream == NULL) {
-    AAsset_close(asset);
-    return NULL;
-  }
   AAssetFile *aasset_file = aasset_alloc_file();
-  aasset_file->stream = stream;
   aasset_file->asset = asset;
   aasset_file->pos = 0;
-  return stream;
+  return aasset_file;
 }
 
 // Extension Functions.
 
 int aasset_copy_file(const char *source_path, const char *target_path) {
-  FILE *source_file = aasset_fopen(source_path, "rb");
+  AAssetFile *source_file = aasset_fopen(source_path, "rb");
   if (source_file == NULL) {
     return 1;
   }
@@ -274,7 +204,7 @@ int aasset_copy_file(const char *source_path, const char *target_path) {
 }
 
 int aasset_file_exists(const char *source_path) {
-  FILE *file = aasset_fopen(source_path, "r");
+  AAssetFile *file = aasset_fopen(source_path, "r");
   if (file == NULL) {
     return 1;
   }
@@ -282,14 +212,13 @@ int aasset_file_exists(const char *source_path) {
   return 0;
 }
 
-int aasset_fsize(FILE *stream) {
-  AAssetFile *aasset_file = aasset_get_file(stream);
-  if (aasset_file == NULL) {
-    return 1;
+int aasset_fsize(AAssetFile *file) {
+  if (file == NULL) {
+    return -1;
   }
 
-  const int kPosition = aasset_file->pos;
-  const int kFileSize = AAsset_seek(aasset_file->asset, 0, SEEK_END);
-  AAsset_seek(aasset_file->asset, kPosition, SEEK_SET);
+  const int kPosition = file->pos;
+  const int kFileSize = AAsset_seek(file->asset, 0, SEEK_END);
+  AAsset_seek(file->asset, kPosition, SEEK_SET);
   return kFileSize;
 }
